@@ -2,7 +2,7 @@
 import numpy as np
 
 class PIBB:
-    def __init__(self, theta_init, lambda_init=1, lambda_min=1e-4, lambda_max=10.0):
+    def __init__(self, theta_init, lambda_init=0.1, lambda_min=1e-4, lambda_max=10.0):
         self.theta = theta_init
         self.Sigma = lambda_init * np.eye(len(theta_init))
         self.lambda_min = lambda_min
