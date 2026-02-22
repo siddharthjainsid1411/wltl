@@ -16,32 +16,47 @@ from pibb import PIBB
 
 USE_CASE = 1
 if USE_CASE == 1:
-    k1 = 50.0      # smooth min sharpness
-    k2 = 60.0      # smooth max sharpness
-    h = 8.0       # PIBB eliteness parameter
+    k1 = 40.0      # smooth min sharpness
+    k2 = 40.0      # smooth max sharpness
+    h = 6.0       # PIBB eliteness parameter
     M = 50        # number of samples (20–40 recommended)
-    iterations = 350  # 100–200 recommended
-    lambda_init = 1.2
+    iterations = 500  # 100–200 recommended
+    lambda_init = 1.0
     # ----------------------------
 
     n_dims = 2
-    n_basis = 35
+    n_basis = 35 
     T = 500
+    # regions = {
+    #     'A': (np.array([3.2, 1.5]), 0.35),  #A': (np.array([3.2, 2.0]), 0.2),
+    #     'B': (np.array([3.0, 3.5]), 0.3),  #B': (np.array([3.0, 3.5]), 0.2),
+    #     'G': (np.array([4.0, 4.0]), 0.3)  #G': (np.array([4.0, 4.0]), 0.2)
+    # }
+
+    # obstacles = {
+    #     'O1': (np.array([2.0, 1.0]), 0.4),  #O1': (np.array([2.0, 1.0]), 0.4),
+    #     'O2': (np.array([3.0, 2.5]), 0.25)  #O2': (np.array([3.0, 2.5]), 0.25)
+    # }
+
+    # y0 = np.array([1.0, 1.0])
+    # g  = np.array([4.0, 4.0])
+
+    #Relaxed regions and obstacles for better convergence
     regions = {
-        'A': (np.array([3.2, 2.0]), 0.2),
-        'B': (np.array([3.0, 3.5]), 0.2),
-        'G': (np.array([4.0, 4.0]), 0.2)
+        'A': (np.array([4.0, 2.0]), 0.3),
+        'B': (np.array([3.5, 4.0]), 0.3),
+        'G': (np.array([6.0, 6.0]), 0.3)
     }
 
     obstacles = {
-        'O1': (np.array([2.0, 1.0]), 0.4),
-        'O2': (np.array([3.0, 2.5]), 0.25)
+        'O1': (np.array([2.5, 1.5]), 0.5),
+        'O2': (np.array([4.0, 3.0]), 0.4)
     }
 
     y0 = np.array([1.0, 1.0])
-    g  = np.array([4.0, 4.0])
+    g  = np.array([6.0, 6.0])
 
-    dmp = DMP(n_dims, n_basis, tau=1.0, alpha_z=20.0, beta_z=6.25, alpha_s=3.0)
+    dmp = DMP(n_dims, n_basis, tau=1.0, alpha_z=20.0, beta_z=5.0,  alpha_s=5.0)  # beta_z = alpha_z / 4 for critical damping
     
 else:
     k1 = 40.0      # smooth min sharpness
@@ -94,7 +109,7 @@ for it in range(iterations):
         traj = dmp.rollout(theta_reshaped, y0, g, T)
 
         if USE_CASE == 1:
-            rho = robustness_case1(
+            rho, terms = robustness_case1(
                 traj,
                 regions,
                 obstacles,
@@ -113,6 +128,9 @@ for it in range(iterations):
             rho_true = robustness_case2_hard(traj, regions, obstacle, weights)
             print(f"Rho True: {rho_true:.4f} at itr: {it}") if rho_true >= 0 else None
 
+        if it % 20 == 0 and m == 0:
+            print("Term values:", terms)
+
         print(f"Rho: {rho:.4f}") if rho > 0 else None
         
 
@@ -128,6 +146,8 @@ for it in range(iterations):
 
     if it in [0,10,50,100,150,200,250,300]:
         stored_trajs[it] = traj.copy()
+
+    
 
     print(f"Iter {it} | Mean Cost {np.mean(costs):.4f}")
     if np.mean(costs) < 1e-4:
@@ -163,8 +183,8 @@ if USE_CASE == 1:
     plt.scatter(*y0, label="Start")
     plt.legend()
     plt.axis("equal")
-    plt.savefig("case1_evolution.png")
-    print("Saved case1_evolution.png")
+    plt.savefig("case1_evolution4.png")
+    print("Saved case1_evolution4.png")
 else:
     theta_final = optimizer.theta.reshape(n_dims, n_basis)
     traj = dmp.rollout(theta_final, y0, g, T)

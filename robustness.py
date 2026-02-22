@@ -31,6 +31,7 @@ def robustness_case1(traj, regions, obstacles,
 
     # Eventually A
     rho_event_A = smooth_max(rho_A, k=k2)
+    rho_event_A *= 1.2  
 
     # Eventually B
     rho_event_B = smooth_max(rho_B, k=k2)
@@ -50,19 +51,18 @@ def robustness_case1(traj, regions, obstacles,
     rho_always_O = smooth_min(rho_O, k=k1)
 
     # Full conjunction
-    rho_total = smooth_min(
-        [
-            rho_event_A,
-            rho_event_B,
-            rho_event_G,
-            rho_until_A,
-            rho_until_B,
-            rho_always_O
-        ],
-        k=k1
-    )
+    terms = {
+        "event_A": rho_event_A,
+        "event_B": rho_event_B,
+        "event_G": rho_event_G,
+        "until_A": rho_until_A,
+        "until_B": rho_until_B,
+        "always_O": rho_always_O
+    }
 
-    return rho_total
+    rho_total = smooth_min(list(terms.values()), k=k1)
+
+    return rho_total, terms
 
     
 # ---- UNTIL operator (corrected) ----
@@ -82,15 +82,13 @@ def smooth_until(rho_phi, rho_psi, k1=20.0, k2=20.0):
     values = []
 
     for t_prime in range(T):
-        # min_{t'' < t'} rho_phi
+
         if t_prime == 0:
-            min_before = rho_phi[0]
+            min_before = np.inf
         else:
             min_before = smooth_min(rho_phi[:t_prime], k=k1)
 
-        # smooth min between psi(t') and min_before
         inner = smooth_min([rho_psi[t_prime], min_before], k=k1)
-
         values.append(inner)
 
     return smooth_max(values, k=k2)
