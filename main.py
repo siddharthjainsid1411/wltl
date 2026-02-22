@@ -14,18 +14,18 @@ from pibb import PIBB
 
 
 
-USE_CASE = 1
+USE_CASE = 2
 if USE_CASE == 1:
-    k1 = 40.0      # smooth min sharpness
-    k2 = 40.0      # smooth max sharpness
+    k1 = 25.0      # smooth min sharpness
+    k2 = 25.0      # smooth max sharpness
     h = 6.0       # PIBB eliteness parameter
-    M = 50        # number of samples (20–40 recommended)
-    iterations = 500  # 100–200 recommended
+    M = 80        # number of samples (20–40 recommended)
+    iterations = 400  # 100–200 recommended
     lambda_init = 1.0
     # ----------------------------
 
     n_dims = 2
-    n_basis = 35 
+    n_basis = 45 
     T = 500
     # regions = {
     #     'A': (np.array([3.2, 1.5]), 0.35),  #A': (np.array([3.2, 2.0]), 0.2),
@@ -43,18 +43,19 @@ if USE_CASE == 1:
 
     #Relaxed regions and obstacles for better convergence
     regions = {
-        'A': (np.array([4.0, 2.0]), 0.3),
-        'B': (np.array([3.5, 4.0]), 0.3),
-        'G': (np.array([6.0, 6.0]), 0.3)
+        'A': (np.array([3.2, 1.5]), 0.35),  #A': (np.array([3.2, 2.0]), 0.2),
+        'B': (np.array([4.5, 4.5]), 0.3),  #B': (np.array([3.0, 3.5]), 0.2),
+        'G': (np.array([6.0, 6.0]), 0.3)  #G': (np.array([4.0, 4.0]), 0.2)
     }
 
     obstacles = {
-        'O1': (np.array([2.5, 1.5]), 0.5),
-        'O2': (np.array([4.0, 3.0]), 0.4)
+        'O1': (np.array([2.1, 0.8]), 0.2),  #O1': (np.array([2.0, 1.0]), 0.4),
+        'O2': (np.array([3.0, 2.5]), 0.25)  #O2': (np.array([3.0, 2.5]), 0.25)
     }
 
     y0 = np.array([1.0, 1.0])
     g  = np.array([6.0, 6.0])
+
 
     dmp = DMP(n_dims, n_basis, tau=1.0, alpha_z=20.0, beta_z=5.0,  alpha_s=5.0)  # beta_z = alpha_z / 4 for critical damping
     
@@ -63,7 +64,7 @@ else:
     k2 = 40.0      # smooth max sharpness
     h = 10.0       # PIBB eliteness parameter
     M = 50        # number of samples (20–40 recommended)
-    iterations = 250  # 100–200 recommended
+    iterations = 350  # 100–200 recommended
     lambda_init = 0.1
     # ----------------------------
 
@@ -117,7 +118,7 @@ for it in range(iterations):
                 k2=k2
             )
         else:
-            rho = robustness_case2(
+            rho, terms = robustness_case2(
                 traj,
                 regions,
                 obstacle,
@@ -125,8 +126,8 @@ for it in range(iterations):
                 k1=k1,
                 k2=k2
             )
-            rho_true = robustness_case2_hard(traj, regions, obstacle, weights)
-            print(f"Rho True: {rho_true:.4f} at itr: {it}") if rho_true >= 0 else None
+            #rho_true = robustness_case2_hard(traj, regions, obstacle, weights)
+            #print(f"Rho True: {rho_true:.4f} at itr: {it}") if rho_true >= 0 else None
 
         if it % 20 == 0 and m == 0:
             print("Term values:", terms)
@@ -156,7 +157,7 @@ for it in range(iterations):
 
 
 # Final trajectory
-plt.figure(figsize=(6,6))
+plt.figure(figsize=(8,8))
 
 if USE_CASE == 1:
     # Plot stored intermediate trajectories
@@ -183,21 +184,48 @@ if USE_CASE == 1:
     plt.scatter(*y0, label="Start")
     plt.legend()
     plt.axis("equal")
-    plt.savefig("case1_evolution4.png")
-    print("Saved case1_evolution4.png")
+    plt.savefig("case1_evolution6_relaxed_itr600_m80_k25_45.png")
+    print("Saved case1_evolution6_relaxed_itr600_m80_k25_45.png")
 else:
     theta_final = optimizer.theta.reshape(n_dims, n_basis)
     traj = dmp.rollout(theta_final, y0, g, T)
 
-    plt.plot(traj[:,0], traj[:,1])
-    plt.scatter(*regions['A'][0], c='r', label='A')
-    plt.scatter(*regions['B'][0], c='g', label='B')
-    plt.scatter(*regions['G'][0], c='b', label='G')
+    # ---- Save Cartesian trajectory for MuJoCo IK ----
+    filename = "case2_xy_trajectory.csv"
+    # Save only x,y
+    np.savetxt(
+        filename,
+        traj,
+        delimiter=",",
+        header="x,y",
+        comments=""
+    )
+
+    print(f"Saved XY trajectory to {filename}")
+
+    # ---- Plot trajectory ----
+    plt.figure(figsize=(6,6))
+
+    plt.plot(traj[:,0], traj[:,1], linewidth=2, label="Trajectory")
+
+    # ---- Plot regions as circles ----
+    for name, (center, radius) in regions.items():
+        circle = plt.Circle(center, radius, fill=False, linewidth=2)
+        plt.gca().add_patch(circle)
+        plt.text(center[0], center[1], name)
+        
+    # ---- Plot obstacle as filled circle ----
     center, radius = obstacle
     circle = plt.Circle(center, radius, color='black', alpha=0.3)
     plt.gca().add_patch(circle)
-    plt.scatter(*center, c='k')
+
+    # ---- Plot start and goal ----
+    plt.scatter(*y0, marker='o', label='Start')
+    plt.scatter(*g, marker='x', label='Goal')
+
+    plt.axis("equal")
     plt.legend()
+    plt.grid(True)
 
     plt.savefig("trajectory.png")
     print("Saved trajectory.png")

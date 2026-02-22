@@ -31,7 +31,7 @@ def robustness_case1(traj, regions, obstacles,
 
     # Eventually A
     rho_event_A = smooth_max(rho_A, k=k2)
-    rho_event_A *= 1.2  
+    #rho_event_A *= 1.2  
 
     # Eventually B
     rho_event_B = smooth_max(rho_B, k=k2)
@@ -123,12 +123,16 @@ def robustness_case2(traj, regions, obstacle, weights,
     rho_until = smooth_until(rho_notG, rho_AB, k1=k1, k2=k2)
 
     # Full conjunction
-    rho_total = smooth_min(
-        [rho_event_AB, rho_event_G, rho_until, rho_always_O],
-        k=k1
-    )
+    terms = {
+        "event_AB": rho_event_AB,
+        "event_G": rho_event_G,
+        "until_AB": rho_until,
+        "always_O": rho_always_O
+    }
 
-    return rho_total
+    rho_total = smooth_min(list(terms.values()), k=k1)
+
+    return rho_total, terms
 
 # -------- HARD ROBUSTNESS (no smoothing) --------
 
